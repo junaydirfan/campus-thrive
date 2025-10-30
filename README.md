@@ -1,4 +1,5 @@
 # CampusThrive - Student Wellness Tracker
+## Submission for Bishop's CampusThrive Hackathon '25
 
 A comprehensive, privacy-focused student wellness tracking web application built with Next.js, TypeScript, and Tailwind CSS. CampusThrive prioritizes student privacy by storing all data locally in the browser's localStorage, ensuring no personal information is sent to external servers.
 
