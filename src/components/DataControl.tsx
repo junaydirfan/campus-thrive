@@ -31,7 +31,8 @@ import {
 import { 
   CSVExporter, 
   JSONExporter, 
-  JSONImporter, 
+  JSONImporter,
+  CSVImporter,
   StorageManager,
   ImportResult,
   StorageUsage
@@ -200,7 +201,7 @@ function ExportSection({ moodEntries, onMessage }: {
         <button
           onClick={handleCSVExport}
           disabled={isExporting || moodEntries.length === 0}
-          className="btn btn-outline flex items-center gap-2 justify-center"
+          className="px-4 py-2 text-sm font-medium text-foreground bg-background border border-border rounded-md hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isExporting ? (
             <LoadingSpinner message="Exporting..." />
@@ -215,7 +216,7 @@ function ExportSection({ moodEntries, onMessage }: {
         <button
           onClick={handleJSONExport}
           disabled={isExporting || moodEntries.length === 0}
-          className="btn btn-outline flex items-center gap-2 justify-center"
+          className="px-4 py-2 text-sm font-medium text-foreground bg-background border border-border rounded-md hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isExporting ? (
             <LoadingSpinner message="Exporting..." />
@@ -252,31 +253,48 @@ function ImportSection({ onImport, onMessage }: {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (file: File) => {
-    if (!file.name.endsWith('.json')) {
+    const isJSON = file.name.endsWith('.json');
+    const isCSV = file.name.endsWith('.csv');
+
+    if (!isJSON && !isCSV) {
       onMessage({
         type: 'error',
         title: 'Invalid File Type',
-        content: 'Please select a JSON file exported from CampusThrive'
+        content: 'Please select a JSON or CSV file exported from CampusThrive'
       });
       return;
     }
 
     setIsImporting(true);
     try {
-      const result = await JSONImporter.importFromFile(file);
+      const result = isJSON 
+        ? await JSONImporter.importFromFile(file)
+        : await CSVImporter.importFromFile(file);
+      
       onImport(result);
       
       if (result.success) {
         onMessage({
           type: 'success',
           title: 'Import Successful',
-          content: `Imported ${result.importedEntries} entries successfully`
+          content: `Imported ${result.importedEntries} entries successfully from ${isJSON ? 'JSON' : 'CSV'}`
         });
       } else {
         onMessage({
           type: 'error',
           title: 'Import Failed',
           content: result.message
+        });
+      }
+
+      // Show warnings if any
+      if (result.warnings.length > 0) {
+        result.warnings.forEach(warning => {
+          onMessage({
+            type: 'warning',
+            title: 'Import Warning',
+            content: warning
+          });
         });
       }
     } catch (error) {
@@ -325,7 +343,7 @@ function ImportSection({ onImport, onMessage }: {
       </div>
       
       <p className="text-sm text-muted-foreground mb-4">
-        Import previously exported JSON data to restore or merge with your current data.
+        Import previously exported JSON or CSV data to restore or merge with your current data.
       </p>
 
       <div
@@ -345,8 +363,8 @@ function ImportSection({ onImport, onMessage }: {
           <div className="space-y-2">
             <Upload className="w-8 h-8 text-muted-foreground mx-auto" />
             <div className="text-sm text-muted-foreground">
-              <p>Drop a JSON file here or click to browse</p>
-              <p className="text-xs mt-1">Only CampusThrive JSON exports are supported</p>
+              <p>Drop a JSON or CSV file here or click to browse</p>
+              <p className="text-xs mt-1">Supports CampusThrive JSON exports and CSV files</p>
             </div>
           </div>
         )}
@@ -355,7 +373,7 @@ function ImportSection({ onImport, onMessage }: {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".json"
+        accept=".json,.csv"
         onChange={handleFileInputChange}
         className="hidden"
       />
@@ -415,9 +433,9 @@ function PrivacyControls({ onClearData, onMessage }: {
               </p>
               <button
                 onClick={() => setShowConfirmDialog(true)}
-                className="mt-2 btn btn-outline btn-sm text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                className="mt-2 px-3 py-1.5 text-sm font-medium text-red-600 bg-background border border-red-600 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-700 transition-colors flex items-center gap-1"
               >
-                <Trash2 className="w-4 h-4 mr-1" />
+                <Trash2 className="w-4 h-4" />
                 Clear All Data
               </button>
             </div>
@@ -440,15 +458,15 @@ function PrivacyControls({ onClearData, onMessage }: {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowConfirmDialog(false)}
-                className="btn btn-outline"
+                className="px-4 py-2 text-sm font-medium text-muted-foreground bg-background border border-border rounded-md hover:bg-muted hover:text-foreground transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleClearData}
-                className="btn bg-red-600 hover:bg-red-700 text-white"
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-red-600 rounded-md hover:bg-red-700 hover:border-red-700 transition-colors flex items-center gap-2"
               >
-                <Trash2 className="w-4 h-4 mr-1" />
+                <Trash2 className="w-4 h-4" />
                 Delete All Data
               </button>
             </div>
@@ -480,12 +498,22 @@ export function DataControl() {
 
   // Handle import result
   const handleImport = useCallback((result: ImportResult) => {
-    if (result.success && result.importedEntries > 0) {
-      // For now, we'll just show the result
-      // In a real implementation, you'd merge or replace the data
-      console.log('Import result:', result);
+    if (result.success && result.importedEntries > 0 && result.entries.length > 0) {
+      // Merge imported entries with existing entries
+      const existingIds = new Set(moodEntries.map(e => e.id));
+      const newEntries = result.entries.filter(e => !existingIds.has(e.id));
+      
+      if (newEntries.length > 0) {
+        const mergedEntries = [...moodEntries, ...newEntries];
+        setMoodEntries(mergedEntries);
+        updateStorageUsage();
+        
+        console.log(`Import successful: Added ${newEntries.length} new entries (${result.importedEntries - newEntries.length} duplicates skipped)`);
+      } else {
+        console.log('Import successful but all entries were duplicates');
+      }
     }
-  }, []);
+  }, [moodEntries, setMoodEntries, updateStorageUsage]);
 
   // Handle clear data
   const handleClearData = useCallback(() => {
@@ -542,6 +570,9 @@ export function DataControl() {
         </div>
       )}
 
+      {/* Privacy Controls */}
+      <PrivacyControls onClearData={handleClearData} onMessage={addMessage} />
+
       {/* Storage Usage */}
       <StorageUsageDisplay usage={storageUsage} />
 
@@ -550,9 +581,6 @@ export function DataControl() {
 
       {/* Import Section */}
       <ImportSection onImport={handleImport} onMessage={addMessage} />
-
-      {/* Privacy Controls */}
-      <PrivacyControls onClearData={handleClearData} onMessage={addMessage} />
 
       {/* Help Section */}
       <div className="card p-6 bg-muted/50">
@@ -578,6 +606,7 @@ export function DataControl() {
           </div>
         </div>
       </div>
+
     </div>
   );
 }

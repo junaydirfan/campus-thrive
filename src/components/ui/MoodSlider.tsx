@@ -217,7 +217,7 @@ export function MoodSlider({
           ref={sliderRef}
           className={`
             relative ${sizeClasses[size]} rounded-full cursor-pointer
-            bg-gradient-to-r from-muted to-muted
+            bg-gradient-to-r from-muted to-muted-foreground/20
             ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
             ${isFocused ? 'ring-2 ring-primary ring-offset-2' : ''}
             transition-all duration-200
@@ -237,7 +237,7 @@ export function MoodSlider({
           <div
             className={`
               absolute top-0 left-0 h-full rounded-full
-              ${config.gradient}
+              ${getDynamicSliderColor(value, dimension)}
               transition-all duration-200 ease-out
               ${isDragging ? 'scale-y-110' : ''}
             `}
@@ -246,9 +246,9 @@ export function MoodSlider({
 
           {/* Range Indicators on Track */}
           <div className="absolute inset-0 flex justify-between items-center px-1">
-            <div className="w-1 h-1/2 bg-background/50 rounded-full" />
-            <div className="w-1 h-1/2 bg-background/50 rounded-full" />
-            <div className="w-1 h-1/2 bg-background/50 rounded-full" />
+            <div className="w-1 h-1/2 bg-background/30 rounded-full" />
+            <div className="w-1 h-1/2 bg-background/30 rounded-full" />
+            <div className="w-1 h-1/2 bg-background/30 rounded-full" />
           </div>
 
           {/* Thumb */}
@@ -368,7 +368,11 @@ export function MoodTracker({
             <div className="flex items-center gap-2">
               <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 transition-all duration-300"
+                  className={`h-full transition-all duration-300 ${
+                    overallScore < 1.5 ? 'bg-red-500/60' :
+                    overallScore > 3.5 ? 'bg-green-500/60' :
+                    'bg-muted-foreground/30'
+                  }`}
                   style={{ width: `${(overallScore / 5) * 100}%` }}
                 />
               </div>
@@ -441,10 +445,10 @@ function getMoodSliderConfig(dimension: MoodDimension): MoodSliderConfig {
       description: 'Overall positive emotional state',
       minIcon: Frown,
       maxIcon: Smile,
-      gradient: 'bg-gradient-to-r from-red-500 via-yellow-500 to-green-500',
-      lowRange: { min: 0, max: 1.5, color: 'bg-red-500', label: 'Negative' },
-      mediumRange: { min: 1.5, max: 3.5, color: 'bg-yellow-500', label: 'Neutral' },
-      highRange: { min: 3.5, max: 5, color: 'bg-green-500', label: 'Positive' }
+      gradient: 'bg-gradient-to-r from-red-500/60 via-muted-foreground/30 to-green-500/60',
+      lowRange: { min: 0, max: 1.5, color: 'bg-red-500/60', label: 'Negative' },
+      mediumRange: { min: 1.5, max: 3.5, color: 'bg-muted-foreground/40', label: 'Neutral' },
+      highRange: { min: 3.5, max: 5, color: 'bg-green-500/60', label: 'Positive' }
     },
     energy: {
       dimension: 'energy',
@@ -452,10 +456,10 @@ function getMoodSliderConfig(dimension: MoodDimension): MoodSliderConfig {
       description: 'Physical and mental energy level',
       minIcon: Battery,
       maxIcon: Zap,
-      gradient: 'bg-gradient-to-r from-gray-400 via-orange-400 to-orange-500',
-      lowRange: { min: 0, max: 1.5, color: 'bg-gray-400', label: 'Low' },
-      mediumRange: { min: 1.5, max: 3.5, color: 'bg-orange-400', label: 'Moderate' },
-      highRange: { min: 3.5, max: 5, color: 'bg-orange-500', label: 'High' }
+      gradient: 'bg-gradient-to-r from-red-500/60 via-muted-foreground/30 to-green-500/60',
+      lowRange: { min: 0, max: 1.5, color: 'bg-red-500/60', label: 'Low' },
+      mediumRange: { min: 1.5, max: 3.5, color: 'bg-muted-foreground/40', label: 'Moderate' },
+      highRange: { min: 3.5, max: 5, color: 'bg-green-500/60', label: 'High' }
     },
     focus: {
       dimension: 'focus',
@@ -463,10 +467,10 @@ function getMoodSliderConfig(dimension: MoodDimension): MoodSliderConfig {
       description: 'Ability to concentrate and avoid distractions',
       minIcon: Eye,
       maxIcon: Target,
-      gradient: 'bg-gradient-to-r from-gray-400 via-blue-400 to-blue-600',
-      lowRange: { min: 0, max: 1.5, color: 'bg-gray-400', label: 'Distracted' },
-      mediumRange: { min: 1.5, max: 3.5, color: 'bg-blue-400', label: 'Focused' },
-      highRange: { min: 3.5, max: 5, color: 'bg-blue-600', label: 'Laser Focus' }
+      gradient: 'bg-gradient-to-r from-red-500/60 via-muted-foreground/30 to-green-500/60',
+      lowRange: { min: 0, max: 1.5, color: 'bg-red-500/60', label: 'Distracted' },
+      mediumRange: { min: 1.5, max: 3.5, color: 'bg-muted-foreground/40', label: 'Focused' },
+      highRange: { min: 3.5, max: 5, color: 'bg-green-500/60', label: 'Laser Focus' }
     },
     stress: {
       dimension: 'stress',
@@ -474,12 +478,43 @@ function getMoodSliderConfig(dimension: MoodDimension): MoodSliderConfig {
       description: 'Perceived level of stress and pressure',
       minIcon: Heart,
       maxIcon: AlertTriangle,
-      gradient: 'bg-gradient-to-r from-green-500 via-yellow-500 to-red-500',
-      lowRange: { min: 0, max: 1.5, color: 'bg-green-500', label: 'Calm' },
-      mediumRange: { min: 1.5, max: 3.5, color: 'bg-yellow-500', label: 'Moderate' },
-      highRange: { min: 3.5, max: 5, color: 'bg-red-500', label: 'High Stress' }
+      gradient: 'bg-gradient-to-r from-green-500/60 via-muted-foreground/30 to-red-500/60',
+      lowRange: { min: 0, max: 1.5, color: 'bg-green-500/60', label: 'Calm' },
+      mediumRange: { min: 1.5, max: 3.5, color: 'bg-muted-foreground/40', label: 'Moderate' },
+      highRange: { min: 3.5, max: 5, color: 'bg-red-500/60', label: 'High Stress' }
     }
   };
 
   return configs[dimension];
+}
+
+/**
+ * Get dynamic color based on slider value
+ */
+function getDynamicSliderColor(value: number, dimension: MoodDimension): string {
+  const config = getMoodSliderConfig(dimension);
+  
+  // For neutral range (1.5-3.5), return colorless
+  if (value >= 1.5 && value <= 3.5) {
+    return 'bg-muted-foreground/30';
+  }
+  
+  // For stress dimension, invert the logic
+  if (dimension === 'stress') {
+    if (value < 1.5) {
+      return 'bg-green-500/60'; // Low stress = green
+    } else if (value > 3.5) {
+      return 'bg-red-500/60'; // High stress = red
+    }
+  } else {
+    // For other dimensions
+    if (value < 1.5) {
+      return 'bg-red-500/60'; // Low values = red
+    } else if (value > 3.5) {
+      return 'bg-green-500/60'; // High values = green
+    }
+  }
+  
+  // Fallback to neutral
+  return 'bg-muted-foreground/30';
 }

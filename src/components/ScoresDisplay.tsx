@@ -10,9 +10,9 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useMoodEntries } from '@/hooks/useLocalStorage';
+import { useState, useEffect, useCallback } from 'react';
 import { calculateMC, calculateDSS, calculateStreak } from '@/lib/scoring';
+import { StorageManager } from '@/lib/storage';
 import type { MoodEntry } from '@/types';
 import { 
   TrendingUp, 
@@ -30,8 +30,56 @@ import {
 } from 'lucide-react';
 
 /**
- * Score calculation utilities - now using the centralized scoring system
+ * Custom hook that directly accesses localStorage and forces updates
  */
+function useDirectMoodEntries() {
+  const [entries, setEntries] = useState<MoodEntry[]>([]);
+  const [version, setVersion] = useState(0);
+
+  const refreshEntries = useCallback(() => {
+    console.log('useDirectMoodEntries: Refreshing entries from localStorage');
+    try {
+      const result = StorageManager.getItem('campus-thrive-mood-entries', (data): data is MoodEntry[] => Array.isArray(data), []);
+      if (result.success && Array.isArray(result.data)) {
+        setEntries(result.data);
+        setVersion(prev => prev + 1);
+        console.log('useDirectMoodEntries: Entries refreshed', {
+          count: result.data.length,
+          version: version + 1
+        });
+      }
+    } catch (error) {
+      console.error('useDirectMoodEntries: Error refreshing entries', error);
+    }
+  }, [version]);
+
+  // Initial load
+  useEffect(() => {
+    refreshEntries();
+  }, []);
+
+  // Listen for storage changes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      console.log('useDirectMoodEntries: Storage change detected');
+      refreshEntries();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also poll for changes every 500ms when data loading
+    const pollInterval = setInterval(() => {
+      refreshEntries();
+    }, 500);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(pollInterval);
+    };
+  }, [refreshEntries]);
+
+  return { entries, version, refreshEntries };
+}
 class ScoreCalculator {
   /**
    * Calculate baseline scores for comparison
@@ -90,10 +138,26 @@ function ScoreDisplay({ value, label, description, icon: Icon, color, baseline, 
 
   if (isLoading) {
     return (
-      <div className="card">
+      <div className="card animate-pulse">
         <div className="card-content">
-          <div className="flex items-center justify-center h-32">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${color} opacity-50`}>
+                <Icon className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <div className="h-4 bg-muted rounded w-24 mb-2"></div>
+                <div className="h-3 bg-muted rounded w-32"></div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+              <span className="text-sm text-muted-foreground">Calculating...</span>
+            </div>
+            <div className="h-8 bg-muted rounded w-16 mx-auto"></div>
           </div>
         </div>
       </div>
@@ -151,19 +215,23 @@ interface ProgressBarProps {
 }
 
 function ProgressBar({ value, max, label, color }: ProgressBarProps) {
-  const percentage = Math.min(100, Math.max(0, (value / max) * 100));
+  // Calculate a dynamic max value that's at least 20% higher than the current value
+  const dynamicMax = Math.max(max, Math.ceil(value * 1.2));
+  const percentage = Math.min(100, Math.max(0, (value / dynamicMax) * 100));
   
   return (
     <div className="space-y-2">
       <div className="flex justify-between text-sm">
         <span className="text-foreground">{label}</span>
-        <span className="text-muted-foreground">{value.toFixed(1)}</span>
       </div>
       <div className="w-full bg-muted rounded-full h-2">
         <div 
           className={`h-2 rounded-full transition-all duration-500 ${color}`}
           style={{ width: `${percentage}%` }}
         />
+      </div>
+      <div className="text-xs text-muted-foreground text-center">
+        {value.toFixed(1)} / {dynamicMax}
       </div>
     </div>
   );
@@ -172,8 +240,12 @@ function ProgressBar({ value, max, label, color }: ProgressBarProps) {
 /**
  * Main Scores Dashboard Component
  */
-export function ScoresDisplay() {
-  const [isLoading, setIsLoading] = useState(true);
+interface ScoresDisplayProps {
+  isDataLoading?: boolean;
+}
+
+export function ScoresDisplay({ isDataLoading = false }: ScoresDisplayProps) {
+  const [isCalculating, setIsCalculating] = useState(true);
   const [scores, setScores] = useState({
     mc: 0,
     dss: 0,
@@ -189,18 +261,74 @@ export function ScoresDisplay() {
     }
   });
 
-  const moodEntries = useMoodEntries();
+  // Use direct access instead of useMoodEntries hook
+  const { entries: moodEntries, version } = useDirectMoodEntries();
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Combined loading state
+  const isLoading = isCalculating || isDataLoading;
+
+  // Force refresh when mood entries change
+  useEffect(() => {
+    console.log('ScoresDisplay: Length changed, triggering refresh', {
+      entriesLength: moodEntries.length,
+      version
+    });
+    setRefreshKey(prev => prev + 1);
+  }, [moodEntries.length, version]);
+
+  // Additional trigger for data changes
+  useEffect(() => {
+    console.log('ScoresDisplay: Data changed, triggering refresh', {
+      entriesLength: moodEntries.length,
+      firstEntryId: moodEntries[0]?.id,
+      lastEntryId: moodEntries[moodEntries.length - 1]?.id,
+      version
+    });
+    setRefreshKey(prev => prev + 1);
+  }, [moodEntries, version]);
+
+  // Trigger recalculation when data loading completes
+  useEffect(() => {
+    if (!isDataLoading && moodEntries.length > 0) {
+      console.log('ScoresDisplay: Data loading completed, forcing recalculation', {
+        entriesLength: moodEntries.length,
+        version
+      });
+      
+      // Use a timeout to ensure the data has been fully processed
+      const timeoutId = setTimeout(() => {
+        setRefreshKey(prev => prev + 1);
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+    return undefined;
+  }, [isDataLoading, moodEntries.length]);
 
   // Calculate scores when data changes
   useEffect(() => {
+    console.log('ScoresDisplay: useEffect triggered', {
+      entriesLength: moodEntries.length,
+      moodEntriesObject: moodEntries
+    });
+    
     const calculateScores = async () => {
-      setIsLoading(true);
+      // Always show loading when recalculating
+      setIsCalculating(true);
       
       try {
-        const entries = moodEntries.value;
+        const entries = moodEntries;
+        
+        console.log('ScoresDisplay: Starting calculation', {
+          entriesLength: entries.length,
+          moodEntriesValue: moodEntries,
+          moodEntriesType: typeof moodEntries
+        });
         
         if (entries.length < 3) {
           // Not enough data for z-score calculations
+          console.log('ScoresDisplay: Insufficient data', { entriesLength: entries.length });
           setScores({
             mc: 0,
             dss: 0,
@@ -210,6 +338,7 @@ export function ScoresDisplay() {
             streak: calculateStreak(entries).currentStreak,
             baseline: { mc: 0, lm: 0, ri: 0, cn: 0 }
           });
+          setIsCalculating(false);
           return;
         }
 
@@ -233,6 +362,15 @@ export function ScoresDisplay() {
         // Calculate baselines for comparison
         const baseline = ScoreCalculator.calculateBaseline(recentEntries);
 
+        console.log('ScoresDisplay: Calculated scores', {
+          mc: mcResult.mc,
+          dss: dssResult.dss,
+          cn: dssResult.components.cn.raw,
+          socialTouchpoints: todayEntry.socialTouchpoints,
+          entriesLength: entries.length,
+          recentEntriesLength: recentEntries.length
+        });
+
         setScores({
           mc: mcResult.mc,
           dss: dssResult.dss,
@@ -246,35 +384,41 @@ export function ScoresDisplay() {
       } catch (error) {
         console.error('Error calculating scores:', error);
       } finally {
-        setIsLoading(false);
+        setIsCalculating(false);
       }
     };
 
     calculateScores();
-  }, [moodEntries.value]);
+  }, [moodEntries, refreshKey, version]);
 
-  const hasInsufficientData = moodEntries.value.length < 3;
+  const hasInsufficientData = moodEntries.length < 3;
 
   return (
-    <div className="space-y-6">
+    <div key={refreshKey} className={`space-y-6 transition-all duration-500 ${isLoading ? 'opacity-60 scale-[0.98]' : 'opacity-100 scale-100'}`}>
       {/* Header */}
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-foreground">Wellness Scores</h2>
         <p className="text-muted-foreground">
           Your personalized wellness metrics and progress tracking
         </p>
+        {isLoading && (
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+            <span className="text-sm text-muted-foreground">Updating scores...</span>
+          </div>
+        )}
       </div>
 
       {/* Insufficient Data Warning */}
       {hasInsufficientData && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
           <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-yellow-600" />
+            <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
             <div>
-              <h3 className="font-semibold text-yellow-800">Building Your Baseline</h3>
-              <p className="text-sm text-yellow-700">
+              <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Building Your Baseline</h3>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300">
                 We need at least 3 days of data to calculate personalized scores. 
-                Keep logging your daily check-ins to see your progress!
+                Generate demo data to see how the scores work, or keep logging your daily check-ins to build your baseline!
               </p>
             </div>
           </div>
@@ -282,14 +426,14 @@ export function ScoresDisplay() {
       )}
 
       {/* Main Scores Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 transition-all duration-500 ${isLoading ? 'opacity-60' : 'opacity-100'}`}>
         {/* Mood Composite */}
         <ScoreDisplay
           value={scores.mc}
           label="Mood Composite"
           description="Overall emotional well-being based on valence, energy, focus, and stress"
           icon={Brain}
-          color="bg-gradient-to-r from-blue-500 to-purple-600"
+          color="bg-gradient-to-r from-primary to-primary/80"
           baseline={scores.baseline.mc}
           isLoading={isLoading}
         />
@@ -300,13 +444,13 @@ export function ScoresDisplay() {
           label="Daily Success Score"
           description="Combined metric of learning momentum, recovery, and connection"
           icon={Target}
-          color="bg-gradient-to-r from-green-500 to-emerald-600"
+          color="bg-gradient-to-r from-primary to-primary/80"
           isLoading={isLoading}
         />
       </div>
 
       {/* DSS Breakdown */}
-      <div className="card">
+      <div className={`card transition-all duration-500 ${isLoading ? 'opacity-60' : 'opacity-100'}`}>
         <div className="card-header">
           <h3 className="card-title">DSS Component Breakdown</h3>
           <p className="card-description">
@@ -333,7 +477,7 @@ export function ScoresDisplay() {
               </div>
               <ProgressBar
                 value={scores.lm}
-                max={3}
+                max={100}
                 label="Learning Momentum"
                 color="bg-blue-500"
               />
@@ -357,7 +501,7 @@ export function ScoresDisplay() {
               </div>
               <ProgressBar
                 value={scores.ri}
-                max={3}
+                max={10}
                 label="Recovery Index"
                 color="bg-green-500"
               />
@@ -381,7 +525,7 @@ export function ScoresDisplay() {
               </div>
               <ProgressBar
                 value={scores.cn}
-                max={3}
+                max={10}
                 label="Connection"
                 color="bg-purple-500"
               />
@@ -391,7 +535,7 @@ export function ScoresDisplay() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-500 ${isLoading ? 'opacity-60' : 'opacity-100'}`}>
         {/* Streak Counter */}
         <div className="card">
           <div className="p-6 text-center flex flex-col justify-center h-full min-h-[120px]">
@@ -414,7 +558,7 @@ export function ScoresDisplay() {
               <h3 className="font-semibold text-foreground">Total Entries</h3>
             </div>
             <div className="text-3xl font-bold text-blue-600 mb-1">
-              {moodEntries.value.length}
+              {moodEntries.length}
             </div>
             <p className="text-sm text-muted-foreground">mood check-ins</p>
           </div>

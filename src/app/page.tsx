@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Layout, PageContainer, Section } from "@/components/Layout";
 import { DailyCheckin } from "@/components/DailyCheckin";
 import { ScoresDisplay } from "@/components/ScoresDisplay";
@@ -81,7 +81,7 @@ function RecentEntriesPreview({ entries }: { entries: MoodEntry[] }) {
           const mc = (entry.valence + entry.energy + entry.focus + (5 - entry.stress)) / 4;
 
           return (
-            <div key={entry.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+            <div key={entry.id} className="flex items-center justify-between p-3 bg-muted/80 backdrop-blur-sm rounded-lg border border-border/50">
               <div className="flex items-center gap-3">
                 <div className={`w-2 h-2 rounded-full ${
                   mc >= 4 ? 'bg-green-500' : mc >= 3 ? 'bg-yellow-500' : 'bg-red-500'
@@ -309,8 +309,10 @@ function calculateDashboardStats(entries: MoodEntry[]): DashboardStats {
 export default function Dashboard() {
   const { value: moodEntries } = useMoodEntries();
   const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(false);
   const [showGetStarted, setShowGetStarted] = useState(false);
   const [showLearnMore, setShowLearnMore] = useState(false);
+  const [justCompletedCheckin, setJustCompletedCheckin] = useState(false);
 
   // Calculate dashboard statistics
   const stats = useMemo(() => calculateDashboardStats(moodEntries), [moodEntries]);
@@ -321,6 +323,22 @@ export default function Dashboard() {
     const timer = setTimeout(() => setIsLoading(false), 500);
     return () => clearTimeout(timer);
   }, [moodEntries]);
+
+  // Handle successful check-in
+  const handleCheckinComplete = useCallback(() => {
+    setJustCompletedCheckin(true);
+    // Reset the flag after a delay
+    setTimeout(() => setJustCompletedCheckin(false), 3000);
+  }, []);
+
+  // Handle data loading operations
+  const handleDataLoadingStart = useCallback(() => {
+    setIsDataLoading(true);
+  }, []);
+
+  const handleDataLoadingComplete = useCallback(() => {
+    setIsDataLoading(false);
+  }, []);
 
   const handleStartTracking = () => {
     setShowGetStarted(true);
@@ -387,18 +405,29 @@ export default function Dashboard() {
         {/* Quick Daily Check-in */}
         {(!stats.hasEntryToday || showGetStarted) && (
           <Section title="Quick Check-in" description="Log your current mood and activities">
-            <DailyCheckin />
+            <DailyCheckin onCheckinComplete={handleCheckinComplete} />
           </Section>
         )}
 
         {/* Demo Mode Section */}
         <Section>
-          <DemoMode />
+          <DemoMode 
+            onDataLoadingStart={handleDataLoadingStart}
+            onDataLoadingComplete={handleDataLoadingComplete}
+          />
         </Section>
 
         {/* Current Scores */}
         <Section title="Your Wellness Scores" description="Track your progress and performance">
-          <ScoresDisplay />
+          {justCompletedCheckin && (
+            <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                <CheckCircle className="w-5 h-5" />
+                <span className="font-medium">Check-in completed! Your scores have been updated.</span>
+              </div>
+            </div>
+          )}
+            <ScoresDisplay isDataLoading={isDataLoading} />
         </Section>
 
         {/* Coach Tips */}

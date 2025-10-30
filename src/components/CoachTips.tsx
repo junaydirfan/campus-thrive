@@ -92,7 +92,7 @@ function TipCard({ tip, isFavorited, isCompleted, onToggleFavorite, onMarkComple
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600">
+            <div className="p-2 rounded-lg bg-gradient-to-r from-primary to-primary/80">
               <Lightbulb className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -275,15 +275,15 @@ export function CoachTips() {
     setTips(allRelevantTips.slice(0, 3));
   }, [allRelevantTips]);
 
-  // Get user stats
-  const userStats = coachEngine ? coachEngine.getUserStats() : { favorites: 0, completed: 0, total: 0 };
+  // Get user stats (FIXED: pass relevant tips so totals match user's current view)
+  const userStats = coachEngine ? coachEngine.getUserStats(allRelevantTips) : { favorites: 0, completed: 0, total: 0 };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center gap-3">
-          <div className="p-3 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600">
+          <div className="p-3 rounded-lg bg-gradient-to-r from-primary to-primary/80">
             <Lightbulb className="w-8 h-8 text-white" />
           </div>
           <h2 className="text-3xl font-bold text-foreground">Personalized Coaching</h2>
@@ -319,18 +319,6 @@ export function CoachTips() {
 
               {/* Controls */}
               <div className="flex flex-wrap items-center gap-3">
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value as TipCategory | 'all')}
-                  className="px-3 py-2 border border-border rounded-lg bg-background text-foreground"
-                >
-                  <option value="all">All Categories</option>
-                  {coachEngine && coachEngine.getAllCategories().map(category => (
-                    <option key={category} value={category}>
-                      {category.replace('_', ' ').toUpperCase()}
-                    </option>
-                  ))}
-                </select>
 
                 <label className="flex items-center gap-2">
                   <input

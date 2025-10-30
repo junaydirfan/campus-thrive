@@ -1022,7 +1022,8 @@ export class TestDataGenerator {
         priority: 'high',
         content: 'Consider taking breaks and practicing relaxation techniques. High stress can impact your focus and overall well-being.',
         category: 'stress_management',
-        suggestedAction: 'Take a 5-minute break and practice deep breathing'
+        suggestedAction: 'Take a 5-minute break and practice deep breathing',
+        duration: 5
       });
     }
 
@@ -1035,7 +1036,8 @@ export class TestDataGenerator {
         priority: 'high',
         content: 'Getting adequate sleep is crucial for academic performance. Aim for 7-9 hours of quality sleep each night.',
         category: 'sleep_recovery',
-        suggestedAction: 'Create a consistent bedtime routine'
+        suggestedAction: 'Create a consistent bedtime routine',
+        duration: 5
       });
     }
 
@@ -1048,7 +1050,8 @@ export class TestDataGenerator {
         priority: 'medium',
         content: 'Social connections are important for mental health. Try to engage with friends or classmates regularly.',
         category: 'social_connection',
-        suggestedAction: 'Reach out to a friend or join a study group'
+        suggestedAction: 'Reach out to a friend or join a study group',
+        duration: 5
       });
     }
 
@@ -1106,6 +1109,8 @@ export class TestDataGenerator {
     const entries: MoodEntry[] = [];
     const today = new Date();
     
+    console.log('TestDataGenerator: Starting demo data generation');
+    
     // Generate 14 days of demo data with clear patterns
     for (let i = 0; i < 14; i++) {
       const date = new Date(today);
@@ -1137,24 +1142,41 @@ export class TestDataGenerator {
         tags = ['work', 'tired', 'assignment'];
       }
       
-      const entry: MoodEntry = {
-        id: `demo-${i}`,
-        timestamp: date,
-        timeBucket: this.getTimeBucket(Math.floor(Math.random() * 12) + 8),
-        valence: Math.round((baseMood + (Math.random() - 0.5) * 0.6) * 10) / 10,
-        energy: Math.round((baseMood + (Math.random() - 0.5) * 0.5) * 10) / 10,
-        focus: Math.round((baseMood + (Math.random() - 0.5) * 0.4) * 10) / 10,
-        stress: Math.round((5 - baseMood + (Math.random() - 0.5) * 0.6) * 10) / 10,
-        tags,
-        deepworkMinutes: Math.random() > 0.4 ? Math.floor(Math.random() * 120) + 60 : 0,
-        tasksCompleted: Math.random() > 0.3 ? Math.floor(Math.random() * 6) + 2 : 0,
-        sleepHours: Math.random() > 0.2 ? Math.floor(Math.random() * 3) + 7 : 0,
-        recoveryAction: Math.random() > 0.5,
-        socialTouchpoints: Math.random() > 0.4 ? Math.floor(Math.random() * 4) + 2 : 0
-      };
+      // Generate multiple entries per day with different hours for realistic power hours
+      const entriesPerDay = Math.floor(Math.random() * 3) + 2; // 2-4 entries per day
       
-      entries.push(entry);
+      for (let j = 0; j < entriesPerDay; j++) {
+        const hour = Math.floor(Math.random() * 16) + 6; // 6 AM to 10 PM
+        const entryDate = new Date(date);
+        entryDate.setHours(hour, Math.floor(Math.random() * 60), 0, 0);
+        
+        const socialTouchpoints = Math.random() > 0.4 ? Math.floor(Math.random() * 4) + 2 : 0;
+        
+        const entry: MoodEntry = {
+          id: `demo-${i}-${j}`,
+          timestamp: entryDate,
+          timeBucket: this.getTimeBucket(hour),
+          valence: isNaN(Math.round((baseMood + (Math.random() - 0.5) * 0.6) * 10) / 10) ? 0 : Math.round((baseMood + (Math.random() - 0.5) * 0.6) * 10) / 10,
+          energy: isNaN(Math.round((baseMood + (Math.random() - 0.5) * 0.5) * 10) / 10) ? 0 : Math.round((baseMood + (Math.random() - 0.5) * 0.5) * 10) / 10,
+          focus: isNaN(Math.round((baseMood + (Math.random() - 0.5) * 0.4) * 10) / 10) ? 0 : Math.round((baseMood + (Math.random() - 0.5) * 0.4) * 10) / 10,
+          stress: isNaN(Math.round((5 - baseMood + (Math.random() - 0.5) * 0.6) * 10) / 10) ? 0 : Math.round((5 - baseMood + (Math.random() - 0.5) * 0.6) * 10) / 10,
+          tags: Array.isArray(tags) ? tags : [],
+          deepworkMinutes: Math.random() > 0.4 ? Math.floor(Math.random() * 120) + 60 : 0,
+          tasksCompleted: Math.random() > 0.3 ? Math.floor(Math.random() * 6) + 2 : 0,
+          sleepHours: Math.random() > 0.2 ? Math.floor(Math.random() * 3) + 7 : 0,
+          recoveryAction: Math.random() > 0.5,
+          socialTouchpoints: Math.random() > 0.4 ? Math.floor(Math.random() * 4) + 2 : 0
+        };
+        
+        entries.push(entry);
+      }
     }
+    
+    console.log('TestDataGenerator: Generated demo data', {
+      totalEntries: entries.length,
+      sampleEntry: entries[0],
+      socialTouchpointsSample: entries.slice(0, 5).map(e => e.socialTouchpoints)
+    });
     
     return entries.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }

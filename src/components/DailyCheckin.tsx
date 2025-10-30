@@ -84,7 +84,7 @@ const TIME_BUCKETS: { value: TimeBucket; label: string; hours: [number, number];
 /**
  * Main Daily Check-in Component
  */
-export function DailyCheckin() {
+export function DailyCheckin({ onCheckinComplete }: { onCheckinComplete?: () => void }) {
   // Form state
   const [formData, setFormData] = useState<CheckinFormData>({
     moodValues: {
@@ -284,6 +284,9 @@ export function DailyCheckin() {
       // Show success message
       setSaveMessage({ type: 'success', text: 'Check-in saved successfully! 🎉' });
       
+      // Notify parent component of successful check-in
+      onCheckinComplete?.();
+      
       // Reset form after a delay
       setTimeout(() => {
         setFormData({
@@ -362,22 +365,30 @@ export function DailyCheckin() {
                 key={bucket.value}
                 onClick={() => handleTimeBucketChange(bucket.value)}
                 className={`
-                  flex flex-col items-center gap-2 p-3 rounded-lg border transition-all
+                  flex flex-col items-center gap-2 p-3 rounded-lg border transition-all duration-200 relative
                   ${formData.timeBucket === bucket.value
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border bg-card hover:border-primary/50'
+                    ? 'border-primary bg-primary text-white shadow-md scale-105'
+                    : 'border-border bg-card hover:border-primary/50 hover:bg-primary/5'
                   }
                 `}
               >
                 <Icon className="w-5 h-5" />
                 <span className="text-sm font-medium">{bucket.label}</span>
+                {formData.timeBucket === bucket.value && (
+                  <div className="absolute top-1 right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
+                  </div>
+                )}
               </button>
             );
           })}
         </div>
+        <div className="text-sm text-muted-foreground text-center">
+          Selected: <span className="font-medium text-primary">{formData.timeBucket}</span>
+        </div>
         <button
           onClick={() => handleTimeBucketChange(getCurrentTimeBucket())}
-          className="btn btn-outline btn-lg flex items-center gap-2 px-4 py-2"
+          className="btn btn-outline btn-lg flex items-center gap-2 px-4 py-2 hover:bg-primary/10 hover:border-primary transition-all duration-200"
         >
           <Clock className="w-4 h-4" />
           Use Current Time
@@ -434,7 +445,7 @@ export function DailyCheckin() {
             />
             
             {showTagSuggestions && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-1 bg-card/95 backdrop-blur-sm border border-border rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
                 {filteredSuggestions.map((tag) => (
                   <button
                     key={tag}

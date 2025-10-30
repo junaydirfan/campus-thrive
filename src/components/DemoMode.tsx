@@ -25,9 +25,12 @@ import {
 
 interface DemoModeProps {
   onDemoDataLoaded?: () => void;
+  onDataLoadingStart?: () => void;
+  onDataLoadingComplete?: () => void;
+  onForceRefresh?: () => void;
 }
 
-export function DemoMode({ onDemoDataLoaded }: DemoModeProps) {
+export function DemoMode({ onDemoDataLoaded, onDataLoadingStart, onDataLoadingComplete, onForceRefresh }: DemoModeProps) {
   const { value: moodEntries, setValue: setMoodEntries } = useMoodEntries();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -38,6 +41,7 @@ export function DemoMode({ onDemoDataLoaded }: DemoModeProps) {
 
   const handleGenerateDemoData = async () => {
     setIsGenerating(true);
+    onDataLoadingStart?.();
     try {
       const demoData = TestDataGenerator.generateDemoData();
       setMoodEntries(demoData);
@@ -46,8 +50,21 @@ export function DemoMode({ onDemoDataLoaded }: DemoModeProps) {
       setTimeout(() => {
         onDemoDataLoaded?.();
       }, 1000);
+      
+      // Give ScoresDisplay time to process the data
+      setTimeout(() => {
+        onDataLoadingComplete?.();
+      }, 1500);
+      
+      // Force an additional refresh after more time
+      setTimeout(() => {
+        console.log('DemoMode: Forcing additional refresh');
+        onDataLoadingComplete?.();
+        onForceRefresh?.();
+      }, 2000);
     } catch (error) {
       console.error('Error generating demo data:', error);
+      onDataLoadingComplete?.();
     } finally {
       setIsGenerating(false);
     }
@@ -55,6 +72,7 @@ export function DemoMode({ onDemoDataLoaded }: DemoModeProps) {
 
   const handleResetToDemo = async () => {
     setIsResetting(true);
+    onDataLoadingStart?.();
     try {
       const demoData = TestDataGenerator.generateDemoData();
       setMoodEntries(demoData);
@@ -62,44 +80,46 @@ export function DemoMode({ onDemoDataLoaded }: DemoModeProps) {
       console.error('Error resetting to demo data:', error);
     } finally {
       setIsResetting(false);
+      onDataLoadingComplete?.();
     }
   };
 
   const handleClearData = () => {
+    onDataLoadingStart?.();
     setMoodEntries([]);
+    setTimeout(() => {
+      onDataLoadingComplete?.();
+    }, 500);
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 transition-all duration-500 ${(isGenerating || isResetting) ? 'opacity-60 scale-[0.98]' : 'opacity-100 scale-100'}`}>
       {/* Demo Status Card */}
-      <div className="card p-6 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 rounded-lg bg-purple-500">
-            <Sparkles className="w-6 h-6 text-white" />
+      <div className="card p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="p-1.5 rounded-lg bg-purple-500">
+            <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-foreground">Demo Status</h3>
-            <p className="text-sm text-muted-foreground">
-              Manage your demo data and presentation mode
-            </p>
+            <h3 className="text-base font-semibold text-foreground">Demo Status</h3>
           </div>
         </div>
 
         {/* Demo Status */}
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-2">
           {isDemoData ? (
             <>
-              <CheckCircle className="w-5 h-5 text-green-600" />
+              <CheckCircle className="w-4 h-4 text-green-600" />
               <span className="text-sm font-medium text-green-600">Demo data loaded</span>
             </>
           ) : hasData ? (
             <>
-              <AlertCircle className="w-5 h-5 text-yellow-600" />
+              <AlertCircle className="w-4 h-4 text-yellow-600" />
               <span className="text-sm font-medium text-yellow-600">Real data present</span>
             </>
           ) : (
             <>
-              <Info className="w-5 h-5 text-blue-600" />
+              <Info className="w-4 h-4 text-blue-600" />
               <span className="text-sm font-medium text-blue-600">No data yet</span>
             </>
           )}

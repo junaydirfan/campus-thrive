@@ -815,11 +815,11 @@ export class CoachEngine {
   /**
    * Get user statistics
    */
-  getUserStats(): { favorites: number; completed: number; total: number } {
+  getUserStats(filteredTips?: CoachTip[]): { favorites: number; completed: number; total: number } {
     return {
       favorites: this.userFavorites.size,
       completed: this.completedTips.size,
-      total: COACH_TIPS_DATABASE.length
+      total: filteredTips ? filteredTips.length : COACH_TIPS_DATABASE.length
     };
   }
 }

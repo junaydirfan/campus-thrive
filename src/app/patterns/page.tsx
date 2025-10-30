@@ -14,8 +14,6 @@ import {
   Users,
   Filter,
   Calendar,
-  TrendingUp,
-  TrendingDown,
   Target,
   Activity,
   Loader2,
@@ -251,22 +249,8 @@ function TagUsageAnalysis({
       
       <div className="space-y-4">
         {topTags.map((tag, index) => {
-          const getTrendIcon = (trend: 'up' | 'down' | 'stable') => {
-            switch (trend) {
-              case 'up': return <TrendingUp className="w-4 h-4 text-green-600" />;
-              case 'down': return <TrendingDown className="w-4 h-4 text-red-600" />;
-              case 'stable': return <div className="w-4 h-4 bg-yellow-600 rounded-full" />;
-            }
-          };
-
-          const getImpactColor = (impact: number) => {
-            if (impact > 0.5) return 'text-green-600';
-            if (impact < -0.5) return 'text-red-600';
-            return 'text-muted-foreground';
-          };
-
           return (
-            <div key={tag.tag} className="flex items-center justify-between p-3 bg-background-alt rounded-lg">
+            <div key={tag.tag} className="flex items-center p-3 bg-background-alt rounded-lg">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-sm font-bold text-primary">
                   {index + 1}
@@ -279,23 +263,6 @@ function TagUsageAnalysis({
                 </div>
               </div>
               
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-sm font-medium text-foreground">
-                    MC: {tag.avgMC.toFixed(1)}
-                  </div>
-                  <div className="text-sm font-medium text-foreground">
-                    DSS: {tag.avgDSS.toFixed(1)}
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  {getTrendIcon(tag.trend)}
-                  <span className={`text-sm font-medium ${getImpactColor(tag.impact)}`}>
-                    {tag.impact > 0 ? '+' : ''}{tag.impact.toFixed(1)}
-                  </span>
-                </div>
-              </div>
             </div>
           );
         })}

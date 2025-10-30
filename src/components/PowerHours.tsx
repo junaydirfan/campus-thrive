@@ -61,8 +61,16 @@ class PowerHoursCalculator {
     const focus = entry.focus;
     const stress = entry.stress;
     
-    // Simple MC calculation (can be enhanced with z-scores)
-    return (valence + energy + focus + (5 - stress)) / 4;
+    // Enhanced MC calculation with productivity weighting
+    const baseMC = (valence + energy + focus + (5 - stress)) / 4;
+    
+    // Add productivity boost based on deep work and tasks
+    const productivityBoost = Math.min(0.5, 
+      (entry.deepworkMinutes || 0) * 0.001 + 
+      (entry.tasksCompleted || 0) * 0.05
+    );
+    
+    return Math.min(5, baseMC + productivityBoost);
   }
 
   /**
@@ -138,17 +146,11 @@ class PowerHoursCalculator {
     return data;
   }
 
-  /**
-   * Get day name from day number
-   */
   static getDayName(day: number): string {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return days[day] || 'Unknown';
   }
 
-  /**
-   * Get hour label from hour number
-   */
   static getHourLabel(hour: number): string {
     if (hour === 0) return '12 AM';
     if (hour < 12) return `${hour} AM`;
@@ -156,9 +158,6 @@ class PowerHoursCalculator {
     return `${hour - 12} PM`;
   }
 
-  /**
-   * Calculate color scale from data
-   */
   static calculateColorScale(data: HeatmapDataPoint[]): ColorScale {
     const mcValues = data
       .filter(d => d.sampleSize > 0)
@@ -184,21 +183,19 @@ class PowerHoursCalculator {
     const max = Math.max(...mcValues);
     const steps = 5;
 
-    // Light theme colors (blue gradient)
     const lightColors = [
-      '#dbeafe', // Very light blue
-      '#93c5fd', // Light blue
-      '#60a5fa', // Blue
-      '#3b82f6', // Medium blue
-      '#1d4ed8'  // Dark blue
+      '#f0f9ff', // Very light blue
+      '#bae6fd', // Light blue
+      '#7dd3fc', // Medium light blue
+      '#38bdf8', // Blue
+      '#0ea5e9'  // Dark blue
     ];
 
-    // Dark theme colors (green gradient)
     const darkColors = [
-      '#064e3b', // Very dark green
-      '#065f46', // Dark green
+      '#022c22', // Very dark green
+      '#064e3b', // Dark green
+      '#065f46', // Medium dark green
       '#047857', // Medium green
-      '#059669', // Light green
       '#10b981'  // Bright green
     ];
 
@@ -211,9 +208,7 @@ class PowerHoursCalculator {
     };
   }
 
-  /**
-   * Get color for a given MC value
-   */
+
   static getColorForValue(
     value: number, 
     colorScale: ColorScale, 
@@ -305,7 +300,7 @@ function HeatmapCell({
   dataPoint: HeatmapDataPoint;
   colorScale: ColorScale;
   isDark: boolean;
-  onHover: (dataPoint: HeatmapDataPoint | null) => void;
+  onHover: (dataPoint: HeatmapDataPoint | null, event?: React.MouseEvent) => void;
 }) {
   const color = PowerHoursCalculator.getColorForValue(
     dataPoint.mcValue, 
@@ -323,7 +318,7 @@ function HeatmapCell({
         ${dataPoint.mcValue > 0 ? 'hover:shadow-lg' : ''}
       `}
       style={{ backgroundColor: color }}
-      onMouseEnter={() => onHover(dataPoint)}
+      onMouseEnter={(e) => onHover(dataPoint, e)}
       onMouseLeave={() => onHover(null)}
       title={isEmpty ? 'No data' : `${dataPoint.dayName} ${dataPoint.hourLabel}: ${dataPoint.mcValue.toFixed(2)} MC (${dataPoint.sampleSize} entries)`}
     />
@@ -333,13 +328,44 @@ function HeatmapCell({
 /**
  * Tooltip component
  */
-function HeatmapTooltip({ dataPoint }: { dataPoint: HeatmapDataPoint | null }) {
-  if (!dataPoint || dataPoint.sampleSize === 0) {
+function HeatmapTooltip({ 
+  dataPoint, 
+  mousePosition 
+}: { 
+  dataPoint: HeatmapDataPoint | null;
+  mousePosition: { x: number; y: number } | null;
+}) {
+  if (!dataPoint || dataPoint.sampleSize === 0 || !mousePosition) {
     return null;
   }
 
+  // Calculate tooltip position with viewport bounds checking
+  const tooltipWidth = 200; // Approximate tooltip width
+  const tooltipHeight = 80; // Approximate tooltip height
+  const padding = 10;
+  
+  let left = mousePosition.x + padding;
+  let top = mousePosition.y - padding;
+  
+  // Adjust if tooltip would go off right edge
+  if (left + tooltipWidth > window.innerWidth) {
+    left = mousePosition.x - tooltipWidth - padding;
+  }
+  
+  // Adjust if tooltip would go off top edge
+  if (top - tooltipHeight < 0) {
+    top = mousePosition.y + padding;
+  }
+
   return (
-    <div className="absolute z-50 bg-card border border-border rounded-lg p-3 shadow-lg pointer-events-none">
+    <div 
+      className="fixed z-50 bg-card border border-border rounded-lg p-3 shadow-lg pointer-events-none max-w-xs"
+      style={{
+        left: `${left}px`,
+        top: `${top}px`,
+        transform: top < mousePosition.y ? 'none' : 'translateY(-100%)'
+      }}
+    >
       <div className="space-y-1">
         <div className="font-medium text-foreground">
           {dataPoint.dayName} {dataPoint.hourLabel}
@@ -362,6 +388,7 @@ export function PowerHours() {
   const { value: moodEntries } = useMoodEntries();
   const [isLoading, setIsLoading] = useState(true);
   const [hoveredCell, setHoveredCell] = useState<HeatmapDataPoint | null>(null);
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   const [isDark, setIsDark] = useState(false);
 
   // Generate heatmap data
@@ -389,6 +416,19 @@ export function PowerHours() {
     dataPointsWithSamples: heatmapData.filter(d => d.sampleSize > 0).length,
     sampleDataPoints: heatmapData.filter(d => d.sampleSize > 0).slice(0, 3)
   });
+
+  // Handle mouse hover with position tracking
+  const handleCellHover = (dataPoint: HeatmapDataPoint | null, event?: React.MouseEvent) => {
+    setHoveredCell(dataPoint);
+    if (event && dataPoint) {
+      setMousePosition({
+        x: event.clientX,
+        y: event.clientY
+      });
+    } else {
+      setMousePosition(null);
+    }
+  };
 
   // Detect theme
   useEffect(() => {
@@ -480,7 +520,7 @@ export function PowerHours() {
                         dataPoint={dataPoint}
                         colorScale={colorScale}
                         isDark={isDark}
-                        onHover={setHoveredCell}
+                        onHover={handleCellHover}
                       />
                     );
                   })}
@@ -489,10 +529,11 @@ export function PowerHours() {
             ))}
           </div>
 
-          {/* Tooltip */}
-          <HeatmapTooltip dataPoint={hoveredCell} />
         </div>
       </div>
+
+      {/* Tooltip - positioned outside scrollable container */}
+      <HeatmapTooltip dataPoint={hoveredCell} mousePosition={mousePosition} />
 
       {/* Insights */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

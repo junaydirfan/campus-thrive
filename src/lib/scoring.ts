@@ -128,7 +128,16 @@ interface StreakResult {
  * Calculate z-score for a value against historical data
  */
 function calculateZScore(value: number, historicalValues: number[]): ZScoreResult {
+  console.log('Z-Score Calculation Debug:', {
+    value,
+    historicalValues: historicalValues.slice(0, 10), // First 10 for debugging
+    allHistoricalValues: historicalValues,
+    length: historicalValues.length,
+    minRequired: SCORING_CONFIG.MIN_HISTORICAL_ENTRIES
+  });
+
   if (historicalValues.length < SCORING_CONFIG.MIN_HISTORICAL_ENTRIES) {
+    console.log('Z-Score: Not enough historical entries');
     return {
       zScore: 0,
       mean: value,
@@ -142,6 +151,14 @@ function calculateZScore(value: number, historicalValues: number[]): ZScoreResul
   const sigma = Math.max(Math.sqrt(variance), SCORING_CONFIG.SIGMA_FLOOR);
   
   const zScore = sigma === 0 ? 0 : (value - mean) / sigma;
+  
+  console.log('Z-Score Calculation Result:', {
+    mean,
+    variance,
+    sigma,
+    zScore,
+    isValid: true
+  });
   
   return {
     zScore,
@@ -244,7 +261,10 @@ export function calculateDSS(
     const riRaw = (entry.sleepHours || 0) + 
                   (entry.recoveryAction ? SCORING_CONFIG.DSS_MULTIPLIERS.RECOVERY_TO_RI : 0);
     
-    const cnRaw = entry.socialTouchpoints || 0;
+    // For Connection score, use the average of recent socialTouchpoints instead of just current entry
+    const allEntries = [...historicalEntries, entry];
+    const recentSocialTouchpoints = allEntries.slice(-7).map(e => e.socialTouchpoints || 0); // Last 7 entries
+    const cnRaw = recentSocialTouchpoints.reduce((sum, val) => sum + val, 0) / recentSocialTouchpoints.length;
 
     // Extract historical component values
     const historicalLM = historicalEntries.map(e => 
@@ -257,10 +277,27 @@ export function calculateDSS(
     
     const historicalCN = historicalEntries.map(e => e.socialTouchpoints || 0);
 
+    console.log('DSS Calculation Debug:', {
+      cnRaw,
+      recentSocialTouchpoints,
+      historicalCN: historicalCN.slice(0, 10), // First 10 for debugging
+      allHistoricalCN: historicalCN,
+      historicalEntriesLength: historicalEntries.length
+    });
+
     // Calculate z-scores
     const lmZ = calculateZScore(lmRaw, historicalLM);
     const riZ = calculateZScore(riRaw, historicalRI);
     const cnZ = calculateZScore(cnRaw, historicalCN);
+
+    console.log('DSS Z-Scores Debug:', {
+      cnZ: {
+        zScore: cnZ.zScore,
+        mean: cnZ.mean,
+        sigma: cnZ.sigma,
+        isValid: cnZ.isValid
+      }
+    });
 
     // Calculate DSS using the exact formula
     const dss = 

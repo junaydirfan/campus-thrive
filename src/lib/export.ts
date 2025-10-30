@@ -10,6 +10,7 @@
  */
 
 import { MoodEntry, ComputedScores, DriverAnalysis, PowerHourHeatmap, CoachTip } from '@/types';
+import { calculateDSS } from './scoring';
 
 /**
  * Export data structure
@@ -40,6 +41,7 @@ export interface ImportResult {
   success: boolean;
   message: string;
   importedEntries: number;
+  entries: MoodEntry[]; // Add the actual imported entries
   errors: string[];
   warnings: string[];
 }
@@ -87,12 +89,19 @@ export class CSVExporter {
       'CN Score'
     ];
 
-    const rows = entries.map(entry => {
+    const rows = entries.map((entry, idx) => {
+      // Gather all previous entries (sorted) as historical context
+      const entryDate = new Date(entry.timestamp);
+      const historicalEntries = entries
+        .filter((e, j) => j < idx && new Date(e.timestamp) < entryDate);
+      
+      const dssResult = calculateDSS(entry, historicalEntries);
+      const cn = dssResult.components.cn.zScore;
+      // Keep the rest using the old calculated values for MC, DSS, LM, RI
       const mc = this.calculateMC(entry);
       const dss = this.calculateDSS(entry);
       const lm = this.calculateLM(entry);
       const ri = this.calculateRI(entry);
-      const cn = this.calculateCN(entry);
 
       return [
         entry.id,
@@ -181,23 +190,6 @@ export class CSVExporter {
   }
 
   /**
-   * Calculate CN (Connection)
-   */
-  private static calculateCN(entry: MoodEntry): number {
-    const valence = entry.valence;
-    const socialTouchpoints = entry.socialTouchpoints || 0;
-    const socialTags = entry.tags.filter(tag => 
-      ['social', 'friends', 'family', 'party', 'dating'].includes(tag.toLowerCase())
-    ).length;
-    
-    const valenceComponent = valence / 5;
-    const touchpointsComponent = Math.min(1, socialTouchpoints / 5);
-    const tagsComponent = Math.min(1, socialTags / 3);
-    
-    return (valenceComponent * 0.4) + (touchpointsComponent * 0.4) + (tagsComponent * 0.2);
-  }
-
-  /**
    * Download CSV file
    */
   static downloadCSV(csvContent: string, filename?: string): void {
@@ -280,8 +272,248 @@ export class JSONExporter {
 }
 
 /**
- * Enhanced JSON Importer
+ * Enhanced CSV Importer
  */
+export class CSVImporter {
+  /**
+   * Import CSV data with validation
+   */
+  static async importFromFile(file: File): Promise<ImportResult> {
+    try {
+      const text = await file.text();
+      console.log('CSV Import: File content preview:', text.substring(0, 500));
+      return this.parseCSV(text);
+    } catch (error) {
+      console.error('CSV Import Error:', error);
+      return {
+        success: false,
+        message: 'Failed to read CSV file',
+        importedEntries: 0,
+        entries: [], // Add empty entries array
+        errors: [`Failed to read file: ${error instanceof Error ? error.message : 'Unknown error'}`],
+        warnings: []
+      };
+    }
+  }
+
+  /**
+   * Parse CSV content and convert to mood entries
+   */
+  private static parseCSV(csvContent: string): ImportResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    const importedEntries: MoodEntry[] = [];
+
+    try {
+      const lines = csvContent.split('\n').filter(line => line.trim());
+      if (lines.length < 2) {
+        errors.push('CSV file must contain at least a header row and one data row');
+        return {
+          success: false,
+          message: 'Invalid CSV format',
+          importedEntries: 0,
+          entries: [], // Add empty entries array
+          errors,
+          warnings
+        };
+      }
+
+      const headers = this.parseCSVLine(lines[0]!);
+      console.log('CSV Import: Headers found:', headers);
+      
+      const expectedHeaders = [
+        'ID', 'Timestamp', 'Time Bucket', 'Valence', 'Energy', 'Focus', 'Stress', 'Tags',
+        'Deep Work Minutes', 'Tasks Completed', 'Sleep Hours', 'Recovery Action', 'Social Touchpoints',
+        'MC Score', 'DSS Score', 'LM Score', 'RI Score', 'CN Score'
+      ];
+
+      // Check if headers match expected format
+      const headerMatch = expectedHeaders.every(header => 
+        headers.some(h => h.toLowerCase().includes(header.toLowerCase()))
+      );
+
+      console.log('CSV Import: Header match result:', headerMatch);
+
+      if (!headerMatch) {
+        warnings.push('CSV headers may not match expected format. Some data may not import correctly.');
+      }
+
+      // Process data rows
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line) continue;
+
+        try {
+          const values = this.parseCSVLine(line);
+          console.log(`CSV Import: Processing row ${i + 1}, values:`, values);
+          const entry = this.createMoodEntryFromCSV(values, headers, i);
+          
+          if (entry) {
+            console.log(`CSV Import: Successfully created entry for row ${i + 1}:`, entry);
+            importedEntries.push(entry);
+          } else {
+            console.log(`CSV Import: Failed to create entry for row ${i + 1}`);
+            errors.push(`Invalid data in row ${i + 1}`);
+          }
+        } catch (error) {
+          console.error(`CSV Import: Error parsing row ${i + 1}:`, error);
+          errors.push(`Error parsing row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      const success = errors.length === 0 && importedEntries.length > 0;
+
+      return {
+        success,
+        message: success 
+          ? `Successfully imported ${importedEntries.length} entries from CSV` 
+          : `Import failed: ${errors.length} errors found`,
+        importedEntries: importedEntries.length,
+        entries: importedEntries, // Return the actual entries
+        errors,
+        warnings
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to parse CSV content',
+        importedEntries: 0,
+        entries: [], // Add empty entries array
+        errors: [`CSV parsing error: ${error instanceof Error ? error.message : 'Unknown error'}`],
+        warnings
+      };
+    }
+  }
+
+  /**
+   * Parse a single CSV line handling quoted values
+   */
+  private static parseCSVLine(line: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    result.push(current.trim());
+    return result;
+  }
+
+  /**
+   * Create a mood entry from CSV values
+   */
+  private static createMoodEntryFromCSV(values: string[], headers: string[], rowIndex: number): MoodEntry | null {
+    try {
+      // Find column indices
+      const getColumnIndex = (headerName: string): number => {
+        return headers.findIndex(h => h.toLowerCase().includes(headerName.toLowerCase()));
+      };
+
+      const idIndex = getColumnIndex('ID');
+      const timestampIndex = getColumnIndex('Timestamp');
+      const timeBucketIndex = getColumnIndex('Time Bucket');
+      const valenceIndex = getColumnIndex('Valence');
+      const energyIndex = getColumnIndex('Energy');
+      const focusIndex = getColumnIndex('Focus');
+      const stressIndex = getColumnIndex('Stress');
+      const tagsIndex = getColumnIndex('Tags');
+      const deepworkIndex = getColumnIndex('Deep Work Minutes');
+      const tasksIndex = getColumnIndex('Tasks Completed');
+      const sleepIndex = getColumnIndex('Sleep Hours');
+      const recoveryIndex = getColumnIndex('Recovery Action');
+      const socialIndex = getColumnIndex('Social Touchpoints');
+
+      // Validate required fields
+      if (idIndex === -1 || timestampIndex === -1 || timeBucketIndex === -1 || 
+          valenceIndex === -1 || energyIndex === -1 || focusIndex === -1 || stressIndex === -1) {
+        return null;
+      }
+
+      // Parse values
+      const id = values[idIndex]?.trim() || `csv-import-${Date.now()}-${rowIndex}`;
+      const timestamp = new Date(values[timestampIndex]?.trim() || new Date());
+      const timeBucket = values[timeBucketIndex]?.trim() || 'Morning';
+      const valence = parseFloat(values[valenceIndex]?.trim() || '2.5');
+      const energy = parseFloat(values[energyIndex]?.trim() || '2.5');
+      const focus = parseFloat(values[focusIndex]?.trim() || '2.5');
+      const stress = parseFloat(values[stressIndex]?.trim() || '2.5');
+
+      // Validate numeric values
+      if (isNaN(valence) || valence < 0 || valence > 5) return null;
+      if (isNaN(energy) || energy < 0 || energy > 5) return null;
+      if (isNaN(focus) || focus < 0 || focus > 5) return null;
+      if (isNaN(stress) || stress < 0 || stress > 5) return null;
+
+      // Parse optional fields
+      const tags = tagsIndex !== -1 ? 
+        values[tagsIndex]?.split(';').map(t => t.trim()).filter(t => t) || [] : [];
+      
+      const deepworkMinutes = deepworkIndex !== -1 ? 
+        (values[deepworkIndex]?.trim() === '' ? 0 : parseInt(values[deepworkIndex]?.trim() || '0') || 0) : 0;
+      
+      const tasksCompleted = tasksIndex !== -1 ? 
+        (values[tasksIndex]?.trim() === '' ? 0 : parseInt(values[tasksIndex]?.trim() || '0') || 0) : 0;
+      
+      const sleepHours = sleepIndex !== -1 ? 
+        (values[sleepIndex]?.trim() === '' ? 0 : parseFloat(values[sleepIndex]?.trim() || '0') || 0) : 0;
+      
+      const recoveryAction = recoveryIndex !== -1 && values[recoveryIndex]?.trim() !== '' ? 
+        values[recoveryIndex]?.toLowerCase().includes('yes') || 
+        values[recoveryIndex]?.toLowerCase().includes('true') || 
+        values[recoveryIndex] === '1' : false;
+      
+      const socialTouchpoints = socialIndex !== -1 ? 
+        (values[socialIndex]?.trim() === '' ? 0 : parseInt(values[socialIndex]?.trim() || '0') || 0) : 0;
+
+      // Validate time bucket - match the actual TimeBucket type
+      const validTimeBuckets = ['Morning', 'Midday', 'Evening', 'Night'];
+      const validTimeBucket = validTimeBuckets.includes(timeBucket) ? timeBucket : 'Morning';
+
+      // Create the entry object with proper typing
+      const entry: MoodEntry = {
+        id,
+        timestamp,
+        timeBucket: validTimeBucket as 'Morning' | 'Midday' | 'Evening' | 'Night',
+        valence,
+        energy,
+        focus,
+        stress,
+        tags,
+        recoveryAction
+      };
+
+      // Add optional fields only if they have values
+      if (deepworkMinutes > 0) {
+        entry.deepworkMinutes = deepworkMinutes;
+      }
+      if (tasksCompleted > 0) {
+        entry.tasksCompleted = tasksCompleted;
+      }
+      if (sleepHours > 0) {
+        entry.sleepHours = sleepHours;
+      }
+      if (socialTouchpoints > 0) {
+        entry.socialTouchpoints = socialTouchpoints;
+      }
+
+      return entry;
+    } catch (error) {
+      console.error('Error creating mood entry from CSV:', error);
+      return null;
+    }
+  }
+}
 export class JSONImporter {
   /**
    * Import JSON data with validation
@@ -289,14 +521,23 @@ export class JSONImporter {
   static async importFromFile(file: File): Promise<ImportResult> {
     try {
       const text = await file.text();
+      console.log('JSON Import: File content preview:', text.substring(0, 500));
       const data = JSON.parse(text);
+      console.log('JSON Import: Parsed data structure:', {
+        version: data.version,
+        moodEntriesCount: data.moodEntries?.length || 0,
+        hasComputedScores: !!data.computedScores,
+        hasDriverAnalysis: !!data.driverAnalysis
+      });
       
       return this.validateAndImport(data);
     } catch (error) {
+      console.error('JSON Import Error:', error);
       return {
         success: false,
         message: 'Invalid JSON file format',
         importedEntries: 0,
+        entries: [], // Add empty entries array
         errors: [`Failed to parse JSON: ${error instanceof Error ? error.message : 'Unknown error'}`],
         warnings: []
       };
@@ -310,6 +551,7 @@ export class JSONImporter {
     const errors: string[] = [];
     const warnings: string[] = [];
     let importedEntries = 0;
+    const validEntries: MoodEntry[] = [];
 
     // Check if it's a valid export format
     if (!data.version || !data.moodEntries) {
@@ -318,6 +560,7 @@ export class JSONImporter {
         success: false,
         message: 'Invalid export format',
         importedEntries: 0,
+        entries: [], // Add empty entries array
         errors,
         warnings
       };
@@ -328,7 +571,16 @@ export class JSONImporter {
       for (const entry of data.moodEntries) {
         if (this.validateMoodEntry(entry)) {
           importedEntries++;
+          validEntries.push(entry); // Add valid entry to the array
         } else {
+          console.log('JSON Import: Invalid entry:', entry.id, {
+            timeBucket: entry.timeBucket,
+            valence: entry.valence,
+            energy: entry.energy,
+            focus: entry.focus,
+            stress: entry.stress,
+            tags: entry.tags
+          });
           errors.push(`Invalid mood entry: ${entry.id || 'unknown'}`);
         }
       }
@@ -360,6 +612,7 @@ export class JSONImporter {
         ? `Successfully imported ${importedEntries} entries` 
         : `Import failed: ${errors.length} errors found`,
       importedEntries,
+      entries: validEntries, // Return the actual entries
       errors,
       warnings
     };
@@ -383,7 +636,12 @@ export class JSONImporter {
     if (typeof entry.focus !== 'number' || entry.focus < 0 || entry.focus > 5) return false;
     if (typeof entry.stress !== 'number' || entry.stress < 0 || entry.stress > 5) return false;
     if (!Array.isArray(entry.tags)) return false;
-    if (!['morning', 'afternoon', 'evening', 'night'].includes(entry.timeBucket)) return false;
+    
+    // Validate time bucket - match the actual TimeBucket type from types/index.ts
+    const validTimeBuckets = ['Morning', 'Midday', 'Evening', 'Night'];
+    const timeBucketLower = entry.timeBucket?.toLowerCase();
+    const validTimeBucketLower = ['morning', 'midday', 'evening', 'night'];
+    if (!validTimeBuckets.includes(entry.timeBucket) && !validTimeBucketLower.includes(timeBucketLower)) return false;
 
     // Validate timestamp
     const timestamp = new Date(entry.timestamp);
