@@ -2,6 +2,54 @@
 
 A comprehensive, privacy-focused student wellness tracking web application built with Next.js, TypeScript, and Tailwind CSS. CampusThrive prioritizes student privacy by storing all data locally in the browser's localStorage, ensuring no personal information is sent to external servers.
 
+# App Manual
+
+## 📝 How the App Works (For New Users)
+
+CampusThrive is designed to feel welcoming, private, and intuitive for everyone. Here’s what you can expect and how to get the most out of it, even if you’re not tech-savvy:
+
+### 1. **Getting Started**
+- **No Account Needed:** There is no sign-in. Everything you do stays on your device–no registration, and your privacy is guaranteed.
+- **First Visit:** The first time you open CampusThrive, you’ll see an inviting dashboard and a prompt to check in with your mood.
+
+### 2. **Making Your First Check-In (Mood Entry)**
+- **Mood Sliders:** You’ll answer a few quick sliders: How happy are you? Energetic? Focused? Stressed? Slide to the number that feels right (0–5).
+- **Time Bucket:** Indicate what time of day it is (Morning, Midday, Evening, Night).
+- **Tags & Activities:** (Optional) Add tags, like "study," "exercise," or "social"—just tap suggestions or add your own.
+- **Extra Details:** Add details like sleep hours, deep work minutes, tasks completed, or social interactions if you wish.
+- **Save:** Press the save button and your day is started!
+
+### 3. **Understanding Your Dashboard**
+- **MC/DSS Metrics:** See your current scores—Mood Composite (MC) and Daily Success Score (DSS)—plotted against your personal baseline. These adapt as you continue to check in.
+- **Visual Trends:** View colorful, easy-to-read charts for trends over time, most productive hours, and more. The UI uses big numbers and simple graphs so you can instantly spot patterns.
+- **Coaching Tips:** After a few check-ins, you’ll start to see 2–3 smartly chosen tips personalized for you. These are always based on your actual mood history and aren’t generic self-help.
+
+### 4. **Personalized Recommendations & Learning**
+- **Contextual Tips:** Tips are always matched to your latest mood check-ins, patterns, time of day, and activities (e.g., low sleep triggers sleep tips!).
+- **Favorites & Completion:** You can "favorite" a tip for later, or mark it as completed, customizing your dashboard experience.
+
+### 5. **Privacy & Data**
+- **All Local:** Everything you record (mood, sleep, tips) never leaves your browser. No analytics, no data sharing, and no one else can see your entries.
+- **Export & Backup:** Export your entire history to CSV or JSON for safe-keeping or migration—no IT skills needed.
+- **Import:** Restore your data easily on a new device or after a clean-up.
+
+### 6. **Analytics, Pattern Recognition & Visualizations**
+- **Trends:** Track streaks, cheerful days, successful study times, tag frequency, and more. It’s all visually displayed.
+- **Success Compass:** See where you excel (Learning, Recovery, Connection) with instant feedback.
+- **Power Hours:** Find out what times of day you excel the most.
+
+### 7. **Demo Mode**
+- **Try Instantly:** If you want, use demo mode to load sample mood entries. Explore all features in seconds—perfect if you want to see what’s possible before using your real data.
+- **Clear Data:** Easily wipe all demo/personal data at any moment—it’s your device and your choice.
+
+### 8. **Ongoing Use**
+- **Daily Check-in:** Spend just 1–2 minutes a day logging your mood and reviewing your dashboard.
+- **See Growth:** Watch long-term trends and progress—CampusThrive helps you build awareness and support your own well-being.
+
+---
+
+This app is built so you never have to worry about privacy, complexity, or feeling overwhelmed. Just check in daily, and CampusThrive will do the rest—giving you insights and suggestions for a happier, healthier academic journey!
+
 ## 🌟 Key Features
 
 ### 🔒 **Privacy-First Design**
