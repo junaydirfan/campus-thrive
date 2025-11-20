@@ -37,6 +37,7 @@ import {
   ImportResult,
   StorageUsage
 } from '@/lib/export';
+import { MoodEntry } from '@/types';
 
 /**
  * Message type for notifications
@@ -136,7 +137,7 @@ function StorageUsageDisplay({ usage }: { usage: StorageUsage }) {
  * Export section component
  */
 function ExportSection({ moodEntries, onMessage }: { 
-  moodEntries: any[]; 
+  moodEntries: MoodEntry[]; 
   onMessage: (message: Message) => void;
 }) {
   const [isExporting, setIsExporting] = useState(false);

@@ -492,8 +492,6 @@ function getMoodSliderConfig(dimension: MoodDimension): MoodSliderConfig {
  * Get dynamic color based on slider value
  */
 function getDynamicSliderColor(value: number, dimension: MoodDimension): string {
-  const config = getMoodSliderConfig(dimension);
-  
   // For neutral range (1.5-3.5), return colorless
   if (value >= 1.5 && value <= 3.5) {
     return 'bg-muted-foreground/30';

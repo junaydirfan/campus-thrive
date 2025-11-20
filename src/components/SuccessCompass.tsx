@@ -144,7 +144,13 @@ class SuccessCompassCalculator {
 /**
  * Custom tooltip component for radar chart
  */
-function CustomRadarTooltip({ active, payload, label }: any) {
+interface CustomRadarTooltipProps {
+  active?: boolean;
+  payload?: Array<{ value: number; dataKey: string }>;
+  label?: string;
+}
+
+function CustomRadarTooltip({ active, payload, label }: CustomRadarTooltipProps) {
   if (active && payload && payload.length) {
     const current = payload[0].value;
     const baseline = payload[1]?.value || 0;

@@ -305,7 +305,7 @@ export function DailyCheckin({ onCheckinComplete }: { onCheckinComplete?: () => 
     } finally {
       setIsSaving(false);
     }
-  }, [formData, moodEntries, getCurrentTimeBucket]);
+  }, [formData, moodEntries, getCurrentTimeBucket, onCheckinComplete]);
 
   // Form validation
   const isFormValid = useMemo(() => {

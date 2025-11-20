@@ -51,12 +51,12 @@ function useDirectMoodEntries() {
     } catch (error) {
       console.error('useDirectMoodEntries: Error refreshing entries', error);
     }
-  }, [version]);
+  }, []);
 
   // Initial load
   useEffect(() => {
     refreshEntries();
-  }, []);
+  }, [refreshEntries]);
 
   // Listen for storage changes
   useEffect(() => {

@@ -70,7 +70,7 @@ function PrivacyExplanation() {
               <div>
                 <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-1">No Data Collection</h4>
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  We don't collect, track, or analyze your personal data. Your privacy is completely protected.
+                  We don&apos;t collect, track, or analyze your personal data. Your privacy is completely protected.
                 </p>
               </div>
             </div>
@@ -82,7 +82,7 @@ function PrivacyExplanation() {
               <div>
                 <h4 className="font-medium text-purple-800 dark:text-purple-200 mb-1">Device-Only Access</h4>
                 <p className="text-sm text-purple-700 dark:text-purple-300">
-                  Only you can access your data. It's stored securely in your browser and never transmitted.
+                  Only you can access your data. It&apos;s stored securely in your browser and never transmitted.
                 </p>
               </div>
             </div>
@@ -95,7 +95,7 @@ function PrivacyExplanation() {
             <div>
               <h4 className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">Important Note</h4>
               <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                Data is stored in your browser's localStorage. Clearing browser data or using incognito mode 
+                Data is stored in your browser&apos;s localStorage. Clearing browser data or using incognito mode 
                 will remove your data. Export your data regularly for backup.
               </p>
             </div>
@@ -529,7 +529,7 @@ function DataDeletion({
               <div>
                 <h4 className="font-medium text-yellow-800 dark:text-yellow-200 mb-2">Are you sure?</h4>
                 <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                  This will delete all your entries, scores, and settings. Type "DELETE" to confirm.
+                  This will delete all your entries, scores, and settings. Type &quot;DELETE&quot; to confirm.
                 </p>
               </div>
             </div>
@@ -647,7 +647,7 @@ function HelpDocumentation() {
               <div>
                 <h4 className="font-medium text-foreground mb-2">Local Storage Only</h4>
                 <p className="text-sm text-muted-foreground">
-                  All data is stored in your browser's localStorage. No data is sent to external servers or cloud services.
+                  All data is stored in your browser&apos;s localStorage. No data is sent to external servers or cloud services.
                 </p>
               </div>
               
@@ -762,7 +762,7 @@ export default function DataControlPage() {
         // Reload the page or refresh data after successful import
         window.location.reload();
       }
-    } catch (error) {
+    } catch {
       setImportResult({
         success: false,
         message: 'Failed to import file. Please check the file format.',

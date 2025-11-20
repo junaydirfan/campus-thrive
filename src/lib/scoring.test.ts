@@ -328,7 +328,7 @@ function runScoringTests() {
       energy: -1,
       focus: 6,
       stress: 0,
-      tags: null as any
+      tags: null as unknown as string[]
     });
 
     const mcResult = calculateMC(malformedEntry, historicalEntries);

@@ -175,7 +175,6 @@ function TipCard({ tip, isFavorited, isCompleted, onToggleFavorite, onMarkComple
 export function CoachTips() {
   const [tips, setTips] = useState<CoachTip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<TipCategory | 'all'>('all');
   const [showCompleted, setShowCompleted] = useState(false);
   const [showMoreTips, setShowMoreTips] = useState(false);
   const [allRelevantTips, setAllRelevantTips] = useState<CoachTip[]>([]);
@@ -212,12 +211,7 @@ export function CoachTips() {
       }
       
       // Use smart tip selection - get more tips for "show more" functionality
-      let allRelevantTips = coachEngine.selectRelevantTips(currentEntry, recentEntries, 8);
-      
-      // Filter by category if selected
-      if (selectedCategory !== 'all') {
-        allRelevantTips = allRelevantTips.filter(tip => tip.category === selectedCategory);
-      }
+      let allRelevantTips = coachEngine.selectRelevantTips(currentEntry || null, recentEntries, 8);
       
       // Filter completed tips if needed
       if (!showCompleted) {
@@ -235,7 +229,7 @@ export function CoachTips() {
     } finally {
       setIsLoading(false);
     }
-  }, [coachEngine, moodEntries.value, selectedCategory, showCompleted]);
+  }, [coachEngine, moodEntries.value, showCompleted]);
 
   // Load tips on mount and when dependencies change
   useEffect(() => {
@@ -370,9 +364,7 @@ export function CoachTips() {
             <p className="text-muted-foreground mb-4">
               {moodEntries.value.length === 0 
                 ? 'Complete your first mood check-in to get personalized coaching tips.'
-                : selectedCategory !== 'all' 
-                  ? `No tips found for ${selectedCategory.replace('_', ' ')} category.`
-                  : 'No personalized tips available at the moment.'
+                : 'No personalized tips available at the moment.'
               }
             </p>
             {moodEntries.value.length > 0 && (

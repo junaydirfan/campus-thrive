@@ -425,7 +425,7 @@ export function calculateStreak(entries: MoodEntry[]): StreakResult {
       lastEntryDate: typeof lastEntryDate === 'string' ? lastEntryDate : lastEntryDate.toISOString(),
       isActive
     };
-  } catch (error) {
+  } catch {
     return {
       currentStreak: 0,
       longestStreak: 0,

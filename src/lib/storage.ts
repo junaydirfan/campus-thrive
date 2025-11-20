@@ -1150,8 +1150,6 @@ export class TestDataGenerator {
         const entryDate = new Date(date);
         entryDate.setHours(hour, Math.floor(Math.random() * 60), 0, 0);
         
-        const socialTouchpoints = Math.random() > 0.4 ? Math.floor(Math.random() * 4) + 2 : 0;
-        
         const entry: MoodEntry = {
           id: `demo-${i}-${j}`,
           timestamp: entryDate,

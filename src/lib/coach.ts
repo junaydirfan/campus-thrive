@@ -8,7 +8,7 @@
  * - Historical wellness data
  */
 
-import type { CoachTip } from '@/types';
+import type { CoachTip, MoodEntry } from '@/types';
 
 /**
  * Tip categories for organization and matching
@@ -730,7 +730,7 @@ export class CoachEngine {
   /**
    * Get smart tips based on current entry and recent patterns
    */
-  selectRelevantTips(currentEntry: any, recentEntries: any[], maxTips: number = 3): CoachTip[] {
+  selectRelevantTips(currentEntry: MoodEntry | null, recentEntries: MoodEntry[], maxTips: number = 3): CoachTip[] {
     if (!currentEntry) {
       return this.getOnboardingTips(maxTips);
     }

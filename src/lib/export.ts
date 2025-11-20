@@ -23,7 +23,7 @@ export interface ExportData {
   driverAnalysis: DriverAnalysis[];
   powerHourHeatmap: PowerHourHeatmap;
   coachTips: CoachTip[];
-  settings: Record<string, any>;
+  settings: Record<string, unknown>;
   metadata: {
     totalEntries: number;
     dateRange: {
@@ -222,7 +222,7 @@ export class JSONExporter {
     driverAnalysis: DriverAnalysis[] = [],
     powerHourHeatmap: PowerHourHeatmap = { matrix: [], peakHours: [], lowHours: [], lastUpdated: new Date() },
     coachTips: CoachTip[] = [],
-    settings: Record<string, any> = {}
+    settings: Record<string, unknown> = {}
   ): ExportData {
     const sortedEntries = [...moodEntries].sort((a, b) => 
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
@@ -547,14 +547,14 @@ export class JSONImporter {
   /**
    * Validate and import data
    */
-  private static validateAndImport(data: any): ImportResult {
+  private static validateAndImport(data: unknown): ImportResult {
     const errors: string[] = [];
     const warnings: string[] = [];
     let importedEntries = 0;
     const validEntries: MoodEntry[] = [];
 
     // Check if it's a valid export format
-    if (!data.version || !data.moodEntries) {
+    if (!data || typeof data !== 'object' || !('version' in data) || !('moodEntries' in data)) {
       errors.push('Invalid export format - missing required fields');
       return {
         success: false,
@@ -567,8 +567,9 @@ export class JSONImporter {
     }
 
     // Validate mood entries
-    if (Array.isArray(data.moodEntries)) {
-      for (const entry of data.moodEntries) {
+    const exportData = data as { version: string; moodEntries: unknown[] };
+    if (Array.isArray(exportData.moodEntries)) {
+      for (const entry of exportData.moodEntries) {
         if (this.validateMoodEntry(entry)) {
           importedEntries++;
           validEntries.push(entry); // Add valid entry to the array
@@ -621,27 +622,30 @@ export class JSONImporter {
   /**
    * Validate individual mood entry
    */
-  private static validateMoodEntry(entry: any): boolean {
+  private static validateMoodEntry(entry: unknown): entry is MoodEntry {
+    if (!entry || typeof entry !== 'object') return false;
+    
     const requiredFields = ['id', 'timestamp', 'timeBucket', 'valence', 'energy', 'focus', 'stress', 'tags'];
+    const entryObj = entry as Record<string, unknown>;
     
     for (const field of requiredFields) {
-      if (entry[field] === undefined || entry[field] === null) {
+      if (entryObj[field] === undefined || entryObj[field] === null) {
         return false;
       }
     }
 
     // Validate data types and ranges
-    if (typeof entry.valence !== 'number' || entry.valence < 0 || entry.valence > 5) return false;
-    if (typeof entry.energy !== 'number' || entry.energy < 0 || entry.energy > 5) return false;
-    if (typeof entry.focus !== 'number' || entry.focus < 0 || entry.focus > 5) return false;
-    if (typeof entry.stress !== 'number' || entry.stress < 0 || entry.stress > 5) return false;
-    if (!Array.isArray(entry.tags)) return false;
+    if (typeof entryObj.valence !== 'number' || entryObj.valence < 0 || entryObj.valence > 5) return false;
+    if (typeof entryObj.energy !== 'number' || entryObj.energy < 0 || entryObj.energy > 5) return false;
+    if (typeof entryObj.focus !== 'number' || entryObj.focus < 0 || entryObj.focus > 5) return false;
+    if (typeof entryObj.stress !== 'number' || entryObj.stress < 0 || entryObj.stress > 5) return false;
+    if (!Array.isArray(entryObj.tags)) return false;
     
     // Validate time bucket - match the actual TimeBucket type from types/index.ts
     const validTimeBuckets = ['Morning', 'Midday', 'Evening', 'Night'];
-    const timeBucketLower = entry.timeBucket?.toLowerCase();
+    const timeBucketLower = typeof entryObj.timeBucket === 'string' ? entryObj.timeBucket.toLowerCase() : '';
     const validTimeBucketLower = ['morning', 'midday', 'evening', 'night'];
-    if (!validTimeBuckets.includes(entry.timeBucket) && !validTimeBucketLower.includes(timeBucketLower)) return false;
+    if (typeof entryObj.timeBucket !== 'string' || (!validTimeBuckets.includes(entryObj.timeBucket) && !validTimeBucketLower.includes(timeBucketLower))) return false;
 
     // Validate timestamp
     const timestamp = new Date(entry.timestamp);

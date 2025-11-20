@@ -131,7 +131,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               </h1>
               
               <p className="text-muted-foreground mb-6">
-                We're sorry, but something unexpected happened. Don't worry, your data is safe and stored locally.
+                We&apos;re sorry, but something unexpected happened. Don&apos;t worry, your data is safe and stored locally.
               </p>
 
               {/* Error Details (Development Only) */}
@@ -191,7 +191,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
                   <Bug className="w-4 h-4" />
                   <span>
-                    <strong>Privacy:</strong> All your data stays on your device. This error doesn't affect your stored information.
+                    <strong>Privacy:</strong> All your data stays on your device. This error doesn&apos;t affect your stored information.
                   </span>
                 </div>
               </div>
