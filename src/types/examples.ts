@@ -189,7 +189,8 @@ const createCoachTip = (
     ],
     priority,
     category,
-    suggestedAction: 'Take a 5-minute break and practice deep breathing'
+    suggestedAction: 'Take a 5-minute break and practice deep breathing',
+    duration: 5
   };
 };
 
