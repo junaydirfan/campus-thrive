@@ -1,6 +1,19 @@
 # CampusThrive - Student Wellness Tracker
+### Submission for Bishop's CampusThrive Hackathon '25
 
 A comprehensive, privacy-focused student wellness tracking web application built with Next.js, TypeScript, and Tailwind CSS. CampusThrive prioritizes student privacy by storing all data locally in the browser's localStorage, ensuring no personal information is sent to external servers.
+
+## 🛠️ Technical Stack
+
+- **Framework**: Next.js 15+ with App Router
+- **Language**: TypeScript with strict mode and comprehensive type safety
+- **Styling**: Tailwind CSS with custom design system and CSS variables
+- **Icons**: Lucide React (comprehensive icon library)
+- **Charts**: Recharts for beautiful data visualizations
+- **Date Handling**: date-fns for robust date manipulation
+- **Theme Management**: next-themes for seamless dark/light mode
+- **State Management**: React hooks with localStorage persistence
+- **Data Validation**: Comprehensive TypeScript types and runtime validation
 
 # App Manual
 
@@ -100,18 +113,6 @@ This app is built so you never have to worry about privacy, complexity, or feeli
 - **Offline Capable**: Works without internet connection
 - **App-like Experience**: Native feel with custom icons and splash screens
 - **Fast Loading**: Optimized performance with Next.js
-
-## 🛠️ Technical Stack
-
-- **Framework**: Next.js 15+ with App Router
-- **Language**: TypeScript with strict mode and comprehensive type safety
-- **Styling**: Tailwind CSS with custom design system and CSS variables
-- **Icons**: Lucide React (comprehensive icon library)
-- **Charts**: Recharts for beautiful data visualizations
-- **Date Handling**: date-fns for robust date manipulation
-- **Theme Management**: next-themes for seamless dark/light mode
-- **State Management**: React hooks with localStorage persistence
-- **Data Validation**: Comprehensive TypeScript types and runtime validation
 
 ## 🚀 Getting Started
 
@@ -260,13 +261,6 @@ CampusThrive is built with privacy as the core principle:
 - **PWA Support**: Install as native app on mobile devices
 
 ## 🚀 Deployment
-
-Deploy to any static hosting service:
-
-- **Vercel** (recommended for Next.js)
-- **Netlify**
-- **GitHub Pages**
-- **Any static hosting provider**
 
 No backend services required - everything runs client-side!
 
