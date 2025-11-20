@@ -33,6 +33,9 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          NODE_ENV: production
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: npm run build
 
       - name: Setup Pages
