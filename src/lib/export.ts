@@ -567,22 +567,23 @@ export class JSONImporter {
     }
 
     // Validate mood entries
-    const exportData = data as { version: string; moodEntries: unknown[] };
+    const exportData = data as { version: string; moodEntries: unknown[]; metadata?: { totalEntries?: number; dateRange?: { start?: string; end?: string } } };
     if (Array.isArray(exportData.moodEntries)) {
       for (const entry of exportData.moodEntries) {
         if (this.validateMoodEntry(entry)) {
           importedEntries++;
-          validEntries.push(entry); // Add valid entry to the array
+          validEntries.push(entry as MoodEntry); // Add valid entry to the array
         } else {
-          console.log('JSON Import: Invalid entry:', entry.id, {
-            timeBucket: entry.timeBucket,
-            valence: entry.valence,
-            energy: entry.energy,
-            focus: entry.focus,
-            stress: entry.stress,
-            tags: entry.tags
+          const entryObj = entry as Record<string, unknown>;
+          console.log('JSON Import: Invalid entry:', entryObj.id, {
+            timeBucket: entryObj.timeBucket,
+            valence: entryObj.valence,
+            energy: entryObj.energy,
+            focus: entryObj.focus,
+            stress: entryObj.stress,
+            tags: entryObj.tags
           });
-          errors.push(`Invalid mood entry: ${entry.id || 'unknown'}`);
+          errors.push(`Invalid mood entry: ${entryObj.id || 'unknown'}`);
         }
       }
     } else {
@@ -595,9 +596,10 @@ export class JSONImporter {
     }
 
     // Check date range
-    if (data.metadata?.dateRange) {
-      const startDate = new Date(data.metadata.dateRange.start);
-      const endDate = new Date(data.metadata.dateRange.end);
+    const dataWithMetadata = data as { version: string; moodEntries: unknown[]; metadata?: { dateRange?: { start?: string; end?: string } } };
+    if (dataWithMetadata.metadata?.dateRange) {
+      const startDate = new Date(dataWithMetadata.metadata.dateRange.start || '');
+      const endDate = new Date(dataWithMetadata.metadata.dateRange.end || '');
       const daysDiff = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
       
       if (daysDiff > 365) {
@@ -648,7 +650,7 @@ export class JSONImporter {
     if (typeof entryObj.timeBucket !== 'string' || (!validTimeBuckets.includes(entryObj.timeBucket) && !validTimeBucketLower.includes(timeBucketLower))) return false;
 
     // Validate timestamp
-    const timestamp = new Date(entry.timestamp);
+    const timestamp = new Date(entryObj.timestamp as string | Date);
     if (isNaN(timestamp.getTime())) return false;
 
     return true;
