@@ -54,7 +54,6 @@ function useDirectMoodEntries() {
     } catch (error) {
       console.error('useDirectMoodEntries: Error refreshing entries', error);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Initial load

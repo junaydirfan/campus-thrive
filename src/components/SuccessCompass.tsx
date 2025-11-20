@@ -151,7 +151,7 @@ interface CustomRadarTooltipProps {
 }
 
 function CustomRadarTooltip({ active, payload, label }: CustomRadarTooltipProps) {
-  if (active && payload && payload.length) {
+  if (active && payload && payload.length && payload[0]) {
     const current = payload[0].value;
     const baseline = payload[1]?.value || 0;
     
