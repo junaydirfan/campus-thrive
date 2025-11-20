@@ -767,6 +767,7 @@ export default function DataControlPage() {
         success: false,
         message: 'Failed to import file. Please check the file format.',
         importedEntries: 0,
+        entries: [],
         errors: ['Import failed'],
         warnings: []
       });

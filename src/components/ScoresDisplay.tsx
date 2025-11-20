@@ -42,15 +42,19 @@ function useDirectMoodEntries() {
       const result = StorageManager.getItem('campus-thrive-mood-entries', (data): data is MoodEntry[] => Array.isArray(data), []);
       if (result.success && Array.isArray(result.data)) {
         setEntries(result.data);
-        setVersion(prev => prev + 1);
-        console.log('useDirectMoodEntries: Entries refreshed', {
-          count: result.data.length,
-          version: version + 1
+        setVersion(prev => {
+          const newVersion = prev + 1;
+          console.log('useDirectMoodEntries: Entries refreshed', {
+            count: result.data.length,
+            version: newVersion
+          });
+          return newVersion;
         });
       }
     } catch (error) {
       console.error('useDirectMoodEntries: Error refreshing entries', error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Initial load
@@ -304,7 +308,7 @@ export function ScoresDisplay({ isDataLoading = false }: ScoresDisplayProps) {
       return () => clearTimeout(timeoutId);
     }
     return undefined;
-  }, [isDataLoading, moodEntries.length]);
+  }, [isDataLoading, moodEntries.length, version]);
 
   // Calculate scores when data changes
   useEffect(() => {
